@@ -133,13 +133,69 @@ def analizar_con_ia(descripcion: str, tipo_servicio: str) -> Optional[Dict]:
 
     except Exception as e:
         print(f"❌ Error en llamada a OpenAI: {e}")
-        # Si hay cualquier error con la API, retornar análisis simulado
-        return {
-            "complejidad": "Media",
-            "ajuste_precio": 25,
-            "servicios_adicionales": ["Análisis de caso", "Consulta legal"],
-            "propuesta_texto": f"Estimado cliente, hemos realizado un análisis preliminar de su caso y estamos listos para brindarle nuestros servicios profesionales.",
-        }
+        # Fallback: intentar con GitHub Model si hay token
+        github_token = os.getenv("GITHUB_TOKEN")
+        if github_token:
+            try:
+                print("🔄 Intentando con GitHub Model gpt-4.1...")
+                from openai import OpenAI as GHOpenAI
+
+                gh_client = GHOpenAI(
+                    base_url="https://models.github.ai/inference",
+                    api_key=github_token,
+                )
+                gh_response = gh_client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "Eres un asistente especializado en análisis legal. Responde únicamente en formato JSON válido.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.7,
+                    top_p=1.0,
+                    model="openai/gpt-4.1",
+                )
+                gh_content = gh_response.choices[0].message.content.strip()
+                print(f"✅ Respuesta de GitHub Model recibida: {gh_content[:100]}...")
+                try:
+                    resultado = json.loads(gh_content)
+                    print("✅ JSON parseado correctamente (GitHub Model)")
+                    required_fields = [
+                        "complejidad",
+                        "ajuste_precio",
+                        "servicios_adicionales",
+                        "propuesta_texto",
+                    ]
+                    if all(field in resultado for field in required_fields):
+                        return resultado
+                except Exception as je:
+                    print(f"❌ Error parseando JSON de GitHub Model: {je}")
+                    return {
+                        "complejidad": "Media",
+                        "ajuste_precio": 0,
+                        "servicios_adicionales": ["Consulta especializada"],
+                        "propuesta_texto": (
+                            gh_content[:500] if gh_content else "Análisis completado."
+                        ),
+                    }
+            except Exception as ghe:
+                print(f"❌ Error en llamada a GitHub Model: {ghe}")
+                # Si falla GitHub Model, retornar análisis simulado
+                return {
+                    "complejidad": "Media",
+                    "ajuste_precio": 25,
+                    "servicios_adicionales": ["Análisis de caso", "Consulta legal"],
+                    "propuesta_texto": f"Estimado cliente, hemos realizado un análisis preliminar de su caso y estamos listos para brindarle nuestros servicios profesionales.",
+                }
+        else:
+            print("⚠️ No hay GITHUB_TOKEN configurado, usando datos simulados")
+            return {
+                "complejidad": "Media",
+                "ajuste_precio": 25,
+                "servicios_adicionales": ["Análisis de caso", "Consulta legal"],
+                "propuesta_texto": f"Estimado cliente, hemos realizado un análisis preliminar de su caso y estamos listos para brindarle nuestros servicios profesionales.",
+            }
 
 
 def calcular_ajuste_precio(complejidad: str, precio_base: float) -> float:

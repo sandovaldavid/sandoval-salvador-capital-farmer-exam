@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Cotizaciones - Capital & Farmer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            display: none;
+        }
+        
+        .result h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        
+        .result-item {
+            margin-bottom: 10px;
+        }
+        
+        .result-item strong {
+            color: #333;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .error h3 {
+            color: #dc3545;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sistema de Cotizaciones</h1>
+            <p>Capital & Farmer - Servicios Legales</p>
+        </div>
+        
+        <form id="cotizacionForm">
+            <div class="form-group">
+                <label for="nombre">Nombre Completo:</label>
+                <input type="text" id="nombre" name="nombre" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Correo Electrónico:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo_servicio">Tipo de Servicio:</label>
+                <select id="tipo_servicio" name="tipo_servicio" required>
+                    <option value="">Seleccionar servicio...</option>
+                    <option value="constitucion">Constitución de empresa (S/ 1,500)</option>
+                    <option value="defensa_laboral">Defensa laboral (S/ 2,000)</option>
+                    <option value="consultoria_tributaria">Consultoría tributaria (S/ 800)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="descripcion">Descripción del Caso:</label>
+                <textarea id="descripcion" name="descripcion" placeholder="Describe tu caso legal con el mayor detalle posible..." required></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit">Generar Cotización</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Generando cotización con análisis de IA...</p>
+        </div>
+        
+        <div class="result" id="result">
+            <h3>Cotización Generada</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('cotizacionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            // Mostrar loading
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('/cotizar', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                
+                if (response.ok) {
+                    // Mostrar resultado exitoso
+                    result.className = 'result';
+                    result.style.display = 'block';
+                    
+                    let content = `
+                        <div class="result-item"><strong>Número de Cotización:</strong> ${data.num_cotizacion}</div>
+                        <div class="result-item"><strong>Cliente:</strong> ${data.nombre}</div>
+                        <div class="result-item"><strong>Email:</strong> ${data.email}</div>
+                        <div class="result-item"><strong>Tipo de Servicio:</strong> ${data.tipo_servicio}</div>
+                        <div class="result-item"><strong>Precio:</strong> S/ ${data.precio.toFixed(2)}</div>
+                        <div class="result-item"><strong>Fecha:</strong> ${new Date(data.fecha).toLocaleString('es-ES')}</div>
+                    `;
+                    
+                    if (data.analisis_ia && !data.analisis_ia.error) {
+                        content += `
+                            <hr style="margin: 15px 0;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">Análisis de IA:</h4>
+                            <div class="result-item"><strong>Complejidad:</strong> ${data.analisis_ia.complejidad}</div>
+                            <div class="result-item"><strong>Ajuste de Precio:</strong> ${data.analisis_ia.ajuste_precio}%</div>
+                            <div class="result-item"><strong>Servicios Adicionales:</strong> ${data.analisis_ia.servicios_adicionales.join(', ')}</div>
+                            <div class="result-item"><strong>Propuesta:</strong> ${data.analisis_ia.propuesta_texto}</div>
+                        `;
+                    } else if (data.analisis_ia && data.analisis_ia.error) {
+                        content += `
+                            <hr style="margin: 15px 0;">
+                            <div style="color: #ffc107;"><strong>Nota:</strong> ${data.analisis_ia.error}</div>
+                        `;
+                    }
+                    
+                    resultContent.innerHTML = content;
+                } else {
+                    // Mostrar error
+                    result.className = 'result error';
+                    result.style.display = 'block';
+                    resultContent.innerHTML = `<h3>Error</h3><p>${data.error}</p>`;
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                result.className = 'result error';
+                result.style.display = 'block';
+                resultContent.innerHTML = `<h3>Error</h3><p>Error de conexión: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

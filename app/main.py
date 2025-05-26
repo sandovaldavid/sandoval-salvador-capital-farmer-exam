@@ -7,6 +7,7 @@ from app import models, schemas
 from app.services import analizar_con_ia
 import os
 from datetime import datetime
+from fastapi.staticfiles import StaticFiles
 
 # Crear las tablas en la base de datos
 models.Base.metadata.create_all(bind=engine)
@@ -15,6 +16,9 @@ app = FastAPI(title="Sistema de Cotizaciones - Capital & Farmer")
 
 # Configurar templates
 templates = Jinja2Templates(directory="app/templates")
+
+# Montar directorio de archivos estáticos
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Dependency para obtener la sesión de la base de datos
